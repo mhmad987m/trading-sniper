@@ -66,8 +66,12 @@ ul{padding-inline-start:20px;margin:0;font-size:13px;color:var(--mut)}li{margin:
 td,th{text-align:right;padding:9px 6px;border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:500}td:nth-child(2){direction:ltr;text-align:right}
 .notice{border-inline-start:3px solid var(--gold);background:var(--field);padding:10px 12px;border-radius:8px;font-size:12px;color:var(--mut);margin:12px 0 0}
 footer{text-align:center;color:var(--mut);font-size:11px;padding:8px}
+.locked main.app{display:none}[hidden]{display:none!important}#gate{position:fixed;inset:0;z-index:99;background:var(--bg);display:grid;place-items:center;padding:20px;overflow:auto}.gbox{width:100%;max-width:360px;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px}.gbox .logo{margin:0 auto 10px}.gbox h2{margin:0 0 4px}.gbox p{color:var(--mut);font-size:13px}.gbox b{color:var(--gold)}#gBtn{display:flex;justify-content:center;margin:12px 0}.owner{display:flex;gap:8px;align-items:center;justify-content:space-between;font-size:12px;color:var(--mut);padding:2px 2px 0}.owner b{color:var(--gold)}
 </style></head>
-<body><main class="app">
+<body class="locked"><div id="gate"><div class="gbox"><div class="logo">TS</div><h2>Trading Sniper</h2><p>مالك المنصة: <b>محمد منعم المعمر</b></p>
+<div id="gStep1" hidden><p>الخطوة 1: سجّل الدخول بحساب Google</p><div id="gBtn"></div></div>
+<div id="gStep2"><p id="gWho"></p><label for="gCode">رمز الدخول</label><input id="gCode" type="password" inputmode="numeric" autocomplete="off"><button id="gGo">دخول</button></div>
+<p id="gErr" class="status"></p></div></div><main class="app"><div class="owner"><span>مالك المنصة: <b>محمد منعم المعمر</b> <span id="gUser"></span></span><button id="gOut" class="ico">خروج</button></div>
 <header class="top"><div class="logo">TS</div><div><h1>Trading Sniper</h1><p>تحليل الذهب والبيتكوين وناسداك</p></div><div class="live" id="live"><i></i><span id="liveTxt">بانتظار التحليل</span></div><button id='theme' class='ico' aria-label='تبديل الوضع'>◐</button></header>
 <div class="layout">
 <aside class="side"><section class="panel"><h3>إعدادات التحليل</h3>
@@ -238,4 +242,21 @@ $('go').onclick=async()=>{
  finally{b.disabled=false}
 };
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script><script>
+(()=>{
+const G=id=>document.getElementById(id),CID='',ALLOW=[],SALT='ts-sniper-v1',HASH='88f48e54052b360a0e61a2ec4205cc3fa9154482cffd8842d0874ec3c073f4ce',DAYS=30,K='ts_auth';
+const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+async function h(c){const e=new TextEncoder(),k=await crypto.subtle.importKey('raw',e.encode(c),'PBKDF2',false,['deriveBits']);return hex(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:e.encode(SALT),iterations:200000},k,256))}
+let ses=null;try{ses=JSON.parse(localStorage.getItem(K)||'null')}catch(e){}
+if(ses&&Date.now()>ses.exp)ses=null;
+const put=()=>{try{localStorage.setItem(K,JSON.stringify(ses))}catch(e){}};
+const err=t=>{G('gErr').textContent=t};
+function openApp(){document.body.classList.remove('locked');G('gate').hidden=true;G('gUser').textContent=ses&&ses.mail?'\u2022 '+ses.mail:''}
+function step(){const needG=!!CID&&!(ses&&ses.mail);G('gStep1').hidden=!needG;G('gStep2').hidden=needG;G('gWho').textContent=ses&&ses.mail?'مرحباً '+ses.mail+'. أدخل رمز الدخول:':'أدخل رمز الدخول:'}
+function loadG(){const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;s.onload=()=>{google.accounts.id.initialize({client_id:CID,callback:r=>{try{const p=JSON.parse(decodeURIComponent(escape(atob(r.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')))));const m=(p.email||'').toLowerCase();if(!p.email_verified){err('البريد غير موثّق.');return}if(ALLOW.length&&!ALLOW.includes(m)){err('هذا الحساب غير مصرّح له بالدخول.');return}ses={...(ses||{}),mail:m,exp:Date.now()+DAYS*864e5};put();err('');step()}catch(e){err('تعذر تسجيل الدخول بـ Google.')}}});google.accounts.id.renderButton(G('gBtn'),{theme:'filled_blue',size:'large',text:'signin_with',locale:'ar'})};s.onerror=()=>err('تعذر تحميل تسجيل Google. تحقق من الاتصال.');document.head.appendChild(s)}
+G('gGo').onclick=async()=>{if(!(window.crypto&&crypto.subtle)){err('افتح التطبيق من الرابط الآمن (https).');return}err('جارٍ التحقق…');try{const ok=(await h(G('gCode').value.trim()))===HASH;if(ok){ses={...(ses||{}),ok:true,exp:Date.now()+DAYS*864e5};put();err('');openApp()}else err('الرمز غير صحيح.')}catch(e){err('تعذر التحقق من الرمز.')}};
+G('gCode').addEventListener('keydown',e=>{if(e.key==='Enter')G('gGo').click()});
+G('gOut').onclick=()=>{try{localStorage.removeItem(K)}catch(e){}location.reload()};
+if(ses&&ses.ok&&(!CID||ses.mail))openApp();else{step();if(CID)loadG()}
+})();
 </script></body></html>
